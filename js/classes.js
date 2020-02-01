@@ -1,6 +1,6 @@
 class threeDimensions {
     constructor() {
-
+        this.lights = []
     }
 
     init() {
@@ -22,7 +22,7 @@ class threeDimensions {
     }
 
     setCamera() {
-        this.camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 500 );
+        this.camera = new THREE.PerspectiveCamera( 35, window.innerWidth / window.innerHeight, 0.1, 100 );
     }
 
     setRenderer() {
@@ -31,25 +31,51 @@ class threeDimensions {
         document.body.appendChild(this.renderer.domElement );
     }
 
-    setPointLight(color="#f7f7f7", intensity=1, x=.5, y=1, z=.5) {
-        let light = new THREE.PointLight(color, intensity);
-        light.position.set( x, y, z);
-        light.castShadow = true;
-        light.shadow.mapSize.height = 2048;
-        light.shadow.mapSize.width = 2048;
+    setPointLight(color="#f7f7f7", intensity=1, x=1, y=1, z=1) {
+        let light = new THREE.PointLight(color, intensity, 6);
 
-        this.scene.add( light );
+        light.position.set(x, y, z);
+        light.castShadow = true;
+        light.shadow.camera = new THREE.PerspectiveCamera( 90, 1, .1, 10 );
+        light.shadow.radius = 10;
+
+        this.lights.push(light);
+        this.scene.add(light);
     }
 
-    setDirectionalLight(color="#f7f7f7", intensity=.5, x=.5, y=1, z=.5) {
+    setDirectionalLight(color="#f7f7f7", intensity=1, x=1, y=1, z=1) {
         let light = new THREE.DirectionalLight(color, intensity);
-        light.position.set( x, y, z);
-        light.castShadow = true;
-        light.shadow.mapSize.height = 2048;
-        light.shadow.mapSize.width = 2048;
-        light.shadow.camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 500 );
 
-        this.scene.add( light );
+        light.position.set(x, y, z);
+        light.castShadow = true;
+        light.shadow.camera.lookAt(0,0,0);
+        light.shadow.camera = new THREE.PerspectiveCamera( 45, 1, 0.1, 10 );
+
+        this.lights.push(light);
+        this.scene.add(light);
+    }
+
+    setToneMapping() {
+        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        this.renderer.toneMappingExposure = .9;
+    }
+
+    debugMode() {
+        // enable helper for all lights on the scene
+        for (let light of this.lights) {
+           let lightHelper,
+               cameraHelper = new THREE.CameraHelper(light.shadow.camera);
+
+           if (light.type === 'PointLight')
+               lightHelper = new THREE.PointLightHelper(light, .2);
+           else if (light.type === 'DirectionalLight')
+               lightHelper = new THREE.DirectionalLightHelper(light, 1);
+           else
+               console.log("Light's type wasn't found");
+
+           this.scene.add(lightHelper);
+           this.scene.add(cameraHelper);
+        }
     }
 
     setAmbientLight(color, size) {
@@ -60,10 +86,8 @@ class threeDimensions {
 
     setControls(minDistance=2, maxDistance=10) {
         let controls = new THREE.OrbitControls( canvas.camera, canvas.renderer.domElement );
-        canvas.camera.position.set( .25, .25, .25 );
         controls.minDistance = minDistance;
         controls.maxDistance = maxDistance;
-        controls.maxPolarAngle = Math.PI/3;
         controls.update();
     }
 
@@ -86,10 +110,21 @@ class threeDimensions {
             let loader = new THREE.GLTFLoader();
 
             loader.load(model, function(gltf) {
+                this.model = gltf.scene.getObjectByName('Donut');
                 this.scene.add(gltf.scene);
                 resolve('Success');
             }.bind(this));
         }.bind(this));
+    }
+
+    createFloor() {
+        let geoFloor = new THREE.PlaneBufferGeometry( 20, 20, 32, 32 );
+        let matStdFloor = new THREE.MeshStandardMaterial( { color: 0x808080, roughness: 0, metalness: 0 } );
+        let mshStdFloor = new THREE.Mesh( geoFloor, matStdFloor );
+        mshStdFloor.position.y = 0.001;
+        mshStdFloor.rotation.x = -Math.PI / 2;
+        mshStdFloor.receiveShadow = true;
+        this.scene.add( mshStdFloor );
     }
 
     createCube() {

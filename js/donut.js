@@ -1,29 +1,22 @@
 const canvas = new threeDimensions();
 
-canvas.ambientLightSize = 0;
 canvas.init();
-
-canvas.setControls(minDistance=.25);
-canvas.setBackgroundGradient('#ff7bd1', '#ff7f8c');
-canvas.setPointLight();
+canvas.camera.position.set( .25, .25, .25 );
 canvas.enableShadow();
 
-canvas.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-canvas.renderer.toneMappingExposure = .9;
+canvas.setControls(minDistance=.25);
+canvas.setToneMapping();
+canvas.setBackgroundGradient('#ff7bd1', '#ff7f8c');
+canvas.setAmbientLight(color="#f7f7f7", size=.1);
+canvas.setPointLight(color="#f7f7f7", intensity=.3, x=.15, y=.25, z=0);
 
-var geoFloor = new THREE.PlaneBufferGeometry( 20, 20, 32, 32 );
-var matStdFloor = new THREE.MeshStandardMaterial( { color: 0x808080, roughness: 0, metalness: 0 } );
-var mshStdFloor = new THREE.Mesh( geoFloor, matStdFloor );
-mshStdFloor.position.y = 0.001;
-mshStdFloor.rotation.x = -Math.PI / 2;
-mshStdFloor.receiveShadow = true;
-canvas.scene.add( mshStdFloor );
-
-
+canvas.createFloor();
 
 canvas.loadModel('models/donut.gltf').then(function() {
     canvas.render();
 
-    let donutObject = canvas.scene.getObjectByName('Donut');
-    donutObject.castShadow = true;
+    canvas.model.castShadow = true;
+    canvas.model.receiveShadow = true;
 });
+
+// canvas.debugMode();

@@ -58,7 +58,6 @@ function init() {
     controls.addEventListener('change', render); // use if there is no animation loop
     controls.minDistance = 2;
     controls.maxDistance = 10;
-    controls.target.set(0, 0, -0.2);
     controls.update();
 
     function animate() {
