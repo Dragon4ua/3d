@@ -1,6 +1,7 @@
 class threeDimensions {
     constructor() {
-        this.lights = []
+        this.lights = [];
+        this.animation = function() {};
     }
 
     init() {
@@ -43,7 +44,7 @@ class threeDimensions {
         this.scene.add(light);
     }
 
-    setDirectionalLight(color="#f7f7f7", intensity=1, x=1, y=1, z=1) {
+    setDirectionalLight(direction=false, color="#f7f7f7", intensity=1, x=1, y=1, z=1) {
         let light = new THREE.DirectionalLight(color, intensity);
 
         light.position.set(x, y, z);
@@ -51,8 +52,13 @@ class threeDimensions {
         light.shadow.camera.lookAt(0,0,0);
         light.shadow.camera = new THREE.PerspectiveCamera( 45, 1, 0.1, 10 );
 
+        if (direction)
+           light.target = direction;
+
         this.lights.push(light);
         this.scene.add(light);
+
+        return light;
     }
 
     setToneMapping() {
@@ -61,6 +67,9 @@ class threeDimensions {
     }
 
     debugMode() {
+        // enable helper for axes
+        this.scene.add(new THREE.AxesHelper(100));
+
         // enable helper for all lights on the scene
         for (let light of this.lights) {
            let lightHelper,
@@ -85,10 +94,10 @@ class threeDimensions {
     }
 
     setControls(minDistance=2, maxDistance=10) {
-        let controls = new THREE.OrbitControls( canvas.camera, canvas.renderer.domElement );
-        controls.minDistance = minDistance;
-        controls.maxDistance = maxDistance;
-        controls.update();
+        this.controls = new THREE.OrbitControls( canvas.camera, canvas.renderer.domElement );
+        this.controls.minDistance = minDistance;
+        this.controls.maxDistance = maxDistance;
+        this.controls.update();
     }
 
     setBackgroundGradient(color1, color2) {
@@ -117,14 +126,56 @@ class threeDimensions {
         }.bind(this));
     }
 
-    createFloor() {
-        let geoFloor = new THREE.PlaneBufferGeometry( 20, 20, 32, 32 );
-        let matStdFloor = new THREE.MeshStandardMaterial( { color: 0x808080, roughness: 0, metalness: 0 } );
-        let mshStdFloor = new THREE.Mesh( geoFloor, matStdFloor );
-        mshStdFloor.position.y = 0.001;
-        mshStdFloor.rotation.x = -Math.PI / 2;
-        mshStdFloor.receiveShadow = true;
-        this.scene.add( mshStdFloor );
+    createFloor(width=20, height=20, color="#808080", y=0.001) {
+        let floor = new THREE.PlaneBufferGeometry(width, height, 1, 1),
+            material = new THREE.MeshStandardMaterial( { color: color, roughness: 0, metalness: 0 } ),
+            mesh = new THREE.Mesh( floor, material );
+
+        mesh.position.y = y;
+
+        mesh.rotation.x = -Math.PI / 2;
+        mesh.receiveShadow = true;
+
+        this.scene.add(mesh);
+
+        return floor;
+    }
+
+    createCircle(radius=1, segments=8, color="#808080") {
+        let circle = new THREE.CircleBufferGeometry(radius, segments),
+            material = new THREE.MeshBasicMaterial({color: color}),
+            mesh = new THREE.Mesh(circle, material);
+
+        this.scene.add(mesh);
+
+        return mesh;
+    }
+
+
+    getSphere(radius=1, segments=8, color="#808080") {
+        let circle = new THREE.SphereBufferGeometry(radius, segments, segments),
+            material = new THREE.MeshBasicMaterial({color: color});
+
+        return new THREE.Mesh(circle, material);
+    }
+
+    createSphere(radius, segments, color) {
+        let mesh = this.getSphere(radius, segments, color);
+        this.scene.add(mesh);
+        return mesh;
+    }
+
+    getTorus(radius, tube, radialSegments, tubularSegments, color="#000") {
+        let geometry = new THREE.TorusBufferGeometry( radius, tube, radialSegments, tubularSegments ),
+            material = new THREE.MeshBasicMaterial( { color: color } );
+
+        return new THREE.Mesh( geometry, material );
+    }
+
+    createTorus(radius, tube, radialSegments, tubularSegments, color) {
+        let mesh = this.getTorus(radius, tube, radialSegments, tubularSegments, color);
+        this.scene.add(mesh);
+        return mesh;
     }
 
     createCube() {
@@ -173,11 +224,13 @@ class threeDimensions {
         this.renderer.shadowMap.size = 1024;
     }
 
-    render(target) {
+    render() {
         let animate = function () {
-            requestAnimationFrame( animate );
+            requestAnimationFrame(animate);
 
-            if (target === 'composer') {
+            this.animation();
+
+            if (this.composer) {
                 this.composer.render();
             } else {
                 this.renderer.render(this.scene, this.camera);
@@ -187,15 +240,30 @@ class threeDimensions {
         animate();
     }
 
-    createComposer() {
+    createComposer(effectPass) {
         this.composer = new POSTPROCESSING.EffectComposer(this.renderer);
         this.composer.addPass(new POSTPROCESSING.RenderPass(this.scene, this.camera));
+        this.composer.addPass(effectPass);
     }
 
     setBloomEffect() {
         const effectPass = new POSTPROCESSING.EffectPass(this.camera, new POSTPROCESSING.BloomEffect());
         effectPass.renderToScreen = true;
-        this.composer.addPass(effectPass);
+    }
+
+    setGodraysEffect(circle) {
+        const godraysEffect = new POSTPROCESSING.GodRaysEffect(this.camera, circle, {
+            resolutionScale: 1,
+            density: .6,
+            decay: .95,
+            weight: .9,
+            samples: 100
+        });
+
+        const effectPass = new POSTPROCESSING.EffectPass(this.camera, godraysEffect);
+        effectPass.renderToScreen = true;
+
+        this.createComposer(effectPass);
     }
 
     setNoiseEffect() {
