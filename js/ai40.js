@@ -3,7 +3,7 @@ const canvas = new threeDimensions();
 canvas.init();
 canvas.setBackgroundGradient("#1a1a1a", "#000");
 canvas.enableShadow();
-canvas.setControls(2, 300);
+canvas.createControls(2, 300);
 
 canvas.camera.fov = 90;
 canvas.camera.position.set(20,20,20);
@@ -12,7 +12,7 @@ canvas.camera.updateProjectionMatrix();
 canvas.controls.update();
 
 // canvas.createFloor(600, 600, '#1a1a1a');
-canvas.setAmbientLight();
+canvas.createAmbientLight();
 
 const sun = canvas.createCircle(100, 36, "#f1f1f1");
 

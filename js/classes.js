@@ -1,103 +1,110 @@
 class threeDimensions {
     constructor() {
         this.lights = [];
+        this.effects = [];
         this.animation = function() {};
     }
 
+    /**
+     * [ACTIONS] MAIN
+     */
+
     init() {
-        this.setScene();
-        this.setCamera();
-        this.setRenderer();
+        this.createScene();
+        this.createCamera();
+        this.createRenderer();
 
         window.addEventListener('resize', function () {
             this.resizeCanvas();
         }.bind(this));
     }
 
-    setScene() {
-        this.scene = new THREE.Scene();
+    render() {
+        let animate = function () {
+
+            requestAnimationFrame(animate);
+
+            this.animation();
+
+            if (this.composer) {
+                this.composer.render();
+            } else {
+                this.renderer.render(this.scene, this.camera);
+            }
+        }.bind(this);
+
+        animate();
     }
 
-    setBackgroundColor(backgroundColor) {
-        this.scene.background = new THREE.Color(backgroundColor);
+    resizeCanvas() {
+        this.camera.aspect = window.innerWidth / window.innerHeight;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
-    setCamera() {
-        this.camera = new THREE.PerspectiveCamera( 35, window.innerWidth / window.innerHeight, 0.1, 100 );
-    }
+    enableDebugMode() {
+        // log the scene
+        console.log(this.scene);
 
-    setRenderer() {
-        this.renderer = new THREE.WebGLRenderer({antialias: true});
-        this.renderer.setSize( window.innerWidth, window.innerHeight );
-        document.body.appendChild(this.renderer.domElement );
-    }
-
-    setPointLight(color="#f7f7f7", intensity=1, x=1, y=1, z=1) {
-        let light = new THREE.PointLight(color, intensity, 6);
-
-        light.position.set(x, y, z);
-        light.castShadow = true;
-        light.shadow.camera = new THREE.PerspectiveCamera( 90, 1, .1, 10 );
-        light.shadow.radius = 10;
-
-        this.lights.push(light);
-        this.scene.add(light);
-    }
-
-    setDirectionalLight(direction=false, color="#f7f7f7", intensity=1, x=1, y=1, z=1) {
-        let light = new THREE.DirectionalLight(color, intensity);
-
-        light.position.set(x, y, z);
-        light.castShadow = true;
-        light.shadow.camera.lookAt(0,0,0);
-        light.shadow.camera = new THREE.PerspectiveCamera( 45, 1, 0.1, 10 );
-
-        if (direction)
-           light.target = direction;
-
-        this.lights.push(light);
-        this.scene.add(light);
-
-        return light;
-    }
-
-    setToneMapping() {
-        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = .9;
-    }
-
-    debugMode() {
         // enable helper for axes
         this.scene.add(new THREE.AxesHelper(100));
 
         // enable helper for all lights on the scene
         for (let light of this.lights) {
-           let lightHelper,
-               cameraHelper = new THREE.CameraHelper(light.shadow.camera);
+            let lightHelper,
+                cameraHelper = new THREE.CameraHelper(light.shadow.camera);
 
-           if (light.type === 'PointLight')
-               lightHelper = new THREE.PointLightHelper(light, .2);
-           else if (light.type === 'DirectionalLight')
-               lightHelper = new THREE.DirectionalLightHelper(light, 1);
-           else
-               console.log("Light's type wasn't found");
+            if (light.type === 'PointLight')
+                lightHelper = new THREE.PointLightHelper(light, .2);
+            else if (light.type === 'DirectionalLight')
+                lightHelper = new THREE.DirectionalLightHelper(light, 1);
+            else
+                console.log("Light's type wasn't found");
 
-           this.scene.add(lightHelper);
-           this.scene.add(cameraHelper);
+            this.scene.add(lightHelper);
+            this.scene.add(cameraHelper);
         }
     }
 
-    setAmbientLight(color, size) {
-        const light = new THREE.AmbientLight(color, size);
-
-        this.scene.add(light);
+    enableShadow() {
+        this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        this.renderer.shadowMap.size = 1024;
     }
 
-    setControls(minDistance=2, maxDistance=10) {
-        this.controls = new THREE.OrbitControls( canvas.camera, canvas.renderer.domElement );
-        this.controls.minDistance = minDistance;
-        this.controls.maxDistance = maxDistance;
-        this.controls.update();
+    /**
+     * [LOAD]
+     */
+
+    loadModel(model) {
+        return new Promise(function(resolve, reject) {
+            let loader = new THREE.GLTFLoader();
+
+            loader.load(model, function(gltf) {
+                if (gltf.scene.getObjectByName('Donut'))
+                    this.model = gltf.scene.getObjectByName('Donut');
+
+                if (gltf.scene) {
+                    this.scene.add(gltf.scene);
+                    resolve();
+                } else {
+                    reject();
+                }
+            }.bind(this));
+        }.bind(this));
+    }
+
+    /**
+     * [SET]
+     */
+
+    setBackgroundColor(backgroundColor) {
+        this.scene.background = new THREE.Color(backgroundColor);
+    }
+
+    setToneMapping() {
+        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        this.renderer.toneMappingExposure = .9;
     }
 
     setBackgroundGradient(color1, color2) {
@@ -114,31 +121,86 @@ class threeDimensions {
         pmremGenerator.dispose();
     }
 
-    loadModel(model) {
-        return new Promise(function(resolve, reject) {
-            let loader = new THREE.GLTFLoader();
+    /**
+     * [CREATE] ENVIRONMENT
+     */
 
-            loader.load(model, function(gltf) {
-                this.model = gltf.scene.getObjectByName('Donut');
-                this.scene.add(gltf.scene);
-                resolve('Success');
-            }.bind(this));
-        }.bind(this));
+    createScene() {
+        this.scene = new THREE.Scene();
     }
 
-    createFloor(width=20, height=20, color="#808080", y=0.001) {
-        let floor = new THREE.PlaneBufferGeometry(width, height, 1, 1),
-            material = new THREE.MeshStandardMaterial( { color: color, roughness: 0, metalness: 0 } ),
-            mesh = new THREE.Mesh( floor, material );
+    createCamera() {
+        this.camera = new THREE.PerspectiveCamera( 50, window.innerWidth / window.innerHeight, 0.1, 100 );
+        this.camera.position.set(5,5,5);
+        this.camera.lookAt(0,0,0);
+    }
 
-        mesh.position.y = y;
+    createRenderer() {
+        this.renderer = new THREE.WebGLRenderer({antialias: true});
+        this.renderer.setSize( window.innerWidth, window.innerHeight );
+        document.body.appendChild(this.renderer.domElement );
+    }
+
+    createControls(minDistance=2, maxDistance=10) {
+        this.controls = new THREE.OrbitControls( canvas.camera, canvas.renderer.domElement );
+        this.controls.minDistance = minDistance;
+        this.controls.maxDistance = maxDistance;
+        this.controls.update();
+    }
+
+    /**
+     * [CREATE] LIGHT
+     */
+
+    createPointLight(color="#f7f7f7", intensity=1, x=1, y=1, z=1) {
+        let light = new THREE.PointLight(color, intensity, 6);
+
+        light.position.set(x, y, z);
+        light.castShadow = true;
+        light.shadow.radius = 10;
+
+        this.lights.push(light);
+        this.scene.add(light);
+
+        return light;
+    }
+
+    createDirectionalLight(direction=false, color="#f7f7f7", intensity=1, x=1, y=1, z=1) {
+        let light = new THREE.DirectionalLight(color, intensity);
+
+        light.position.set(x, y, z);
+        light.castShadow = true;
+        light.shadow.camera.lookAt(0,0,0);
+        light.shadow.camera = new THREE.PerspectiveCamera( 45, 1, 0.1, 10 );
+
+        if (direction)
+           light.target = direction;
+
+        this.lights.push(light);
+        this.scene.add(light);
+
+        return light;
+    }
+
+    createAmbientLight(color, size) {
+        const light = new THREE.AmbientLight(color, size);
+
+        this.scene.add(light);
+    }
+
+    /**
+     * [CREATE] GEOMETRY
+     */
+
+    createFloor(width, height, material) {
+        const mesh = this.getFloor(width, height, material);
 
         mesh.rotation.x = -Math.PI / 2;
         mesh.receiveShadow = true;
 
         this.scene.add(mesh);
 
-        return floor;
+        return mesh;
     }
 
     createCircle(radius=1, segments=8, color="#808080") {
@@ -146,34 +208,25 @@ class threeDimensions {
             material = new THREE.MeshBasicMaterial({color: color}),
             mesh = new THREE.Mesh(circle, material);
 
+        mesh.castShadow = true;
+
         this.scene.add(mesh);
 
         return mesh;
     }
 
+    createSphere(radius, segments, material) {
+        let mesh = this.getSphere(radius, segments, material);
 
-    getSphere(radius=1, segments=8, color="#808080") {
-        let circle = new THREE.SphereBufferGeometry(radius, segments, segments),
-            material = new THREE.MeshBasicMaterial({color: color});
+        mesh.castShadow = true;
 
-        return new THREE.Mesh(circle, material);
-    }
-
-    createSphere(radius, segments, color) {
-        let mesh = this.getSphere(radius, segments, color);
         this.scene.add(mesh);
+
         return mesh;
     }
 
-    getTorus(radius, tube, radialSegments, tubularSegments, color="#000") {
-        let geometry = new THREE.TorusBufferGeometry( radius, tube, radialSegments, tubularSegments ),
-            material = new THREE.MeshBasicMaterial( { color: color } );
-
-        return new THREE.Mesh( geometry, material );
-    }
-
-    createTorus(radius, tube, radialSegments, tubularSegments, color) {
-        let mesh = this.getTorus(radius, tube, radialSegments, tubularSegments, color);
+    createTorus(radius, tube, radialSegments, tubularSegments, material) {
+        let mesh = this.getTorus(radius, tube, radialSegments, tubularSegments, material);
         this.scene.add(mesh);
         return mesh;
     }
@@ -183,6 +236,48 @@ class threeDimensions {
         let material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
         this.cube = new THREE.Mesh( geometry, material );
         this.scene.add( this.cube );
+    }
+
+    /**
+     * [GET] GEOMETRY
+     */
+
+    getFloor(width=20, height=20, material) {
+        if (!material)
+            material = this.getMaterial({color: "#f7f7f7", roughness: 0, metalness: 0});
+
+        const geometry = new THREE.PlaneBufferGeometry(width, height, 1, 1);
+
+        return new THREE.Mesh(geometry, material);
+    }
+
+    getSphere(radius=1, segments=8, material) {
+        if (!material)
+            material = this.getMaterial({color: "#f7f7f7"});
+
+        let geometry = new THREE.SphereBufferGeometry(radius, segments, segments);
+
+        return new THREE.Mesh(geometry, material);
+    }
+
+    getTorus(radius, tube, radialSegments, tubularSegments, material) {
+        if (!material)
+            material = this.getMaterial({color: "#f7f7f7"});
+
+        let geometry = new THREE.TorusBufferGeometry( radius, tube, radialSegments, tubularSegments );
+
+        return new THREE.Mesh( geometry, material );
+    }
+
+    /**
+     * [GET] OTHER
+     */
+
+    getMaterial(options) {
+        if (Object.keys(options).length === 1 && Object.keys(options)[0] === 'color')
+            return new THREE.MeshBasicMaterial(options);
+        else
+            return new THREE.MeshPhysicalMaterial(options);
     }
 
     getGradientTexture(color1, color2) {
@@ -212,47 +307,80 @@ class threeDimensions {
         return texture;
     }
 
-    resizeCanvas() {
-        this.camera.aspect = window.innerWidth / window.innerHeight;
-        this.camera.updateProjectionMatrix();
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
-    }
+    /**
+     * [CREATE] POSTPROCESSING
+     */
 
-    enableShadow() {
-        this.renderer.shadowMap.enabled = true;
-        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        this.renderer.shadowMap.size = 1024;
-    }
-
-    render() {
-        let animate = function () {
-            requestAnimationFrame(animate);
-
-            this.animation();
-
-            if (this.composer) {
-                this.composer.render();
-            } else {
-                this.renderer.render(this.scene, this.camera);
-            }
-        }.bind(this);
-
-        animate();
-    }
-
-    createComposer(effectPass) {
+    createComposer() {
         this.composer = new POSTPROCESSING.EffectComposer(this.renderer);
         this.composer.addPass(new POSTPROCESSING.RenderPass(this.scene, this.camera));
-        this.composer.addPass(effectPass);
     }
 
-    setBloomEffect() {
-        const effectPass = new POSTPROCESSING.EffectPass(this.camera, new POSTPROCESSING.BloomEffect());
+    saveEffects() {
+        // Merge all effects into one pass
+        const effectPass = new POSTPROCESSING.EffectPass(this.camera, ...this.effects);
         effectPass.renderToScreen = true;
+
+        // Create a pass for each effect.
+        const passes = this.effects.map((effect) => new POSTPROCESSING.EffectPass(this.camera, effect));
+        passes[passes.length - 1].renderToScreen = true;
+
+        // Add all passes to the composer.
+        for(const pass of passes) {
+            pass.enabled = false;
+            this.composer.addPass(pass);
+        }
+
+        this.composer.addPass(effectPass);
+
+        console.log(this.composer);
     }
 
-    setGodraysEffect(circle) {
-        const godraysEffect = new POSTPROCESSING.GodRaysEffect(this.camera, circle, {
+    createBloomEffect() {
+        if (!this.composer)
+            this.createComposer();
+
+        const bloomEffect = new POSTPROCESSING.BloomEffect({
+            blendFunction: POSTPROCESSING.BlendFunction.SCREEN,
+            kernelSize: POSTPROCESSING.KernelSize.MEDIUM,
+            luminanceThreshold: 0.825,
+            luminanceSmoothing: 0.075,
+            height: 480
+        });
+
+        this.effects.push(bloomEffect);
+    }
+
+    createBokehEffect(focus=5) {
+        if (!this.composer)
+            this.createComposer();
+
+        const bokehEffect = new POSTPROCESSING.RealisticBokehEffect({
+            focus: focus,
+            focalLength: this.camera.getFocalLength(),
+            fStop: 1.6,
+            luminanceThreshold: 0.325,
+            luminanceGain: 2.0,
+            bias: -0.35,
+            fringe: 0.7,
+            maxBlur: 2.5,
+            rings: 5,
+            samples: 5,
+            showFocus: false,
+            manualDoF: false,
+            pentagon: true
+        });
+
+        console.log(bokehEffect);
+
+        this.effects.push(bokehEffect);
+    }
+
+    createGodRaysEffect(circle) {
+        if (!this.composer)
+            this.createComposer();
+
+        const godRaysEffect = new POSTPROCESSING.GodRaysEffect(this.camera, circle, {
             resolutionScale: 1,
             density: .6,
             decay: .95,
@@ -260,15 +388,28 @@ class threeDimensions {
             samples: 100
         });
 
-        const effectPass = new POSTPROCESSING.EffectPass(this.camera, godraysEffect);
-        effectPass.renderToScreen = true;
-
-        this.createComposer(effectPass);
+        this.effects.push(godRaysEffect);
     }
 
-    setNoiseEffect() {
-        const effectPass = new POSTPROCESSING.EffectPass(this.camera, new POSTPROCESSING.NoiseEffect());
-        effectPass.renderToScreen = true;
-        this.composer.addPass(effectPass);
+    createGlitchEffect() {
+        if (!this.composer)
+            this.createComposer();
+
+        const glitchEffect = new POSTPROCESSING.GlitchEffect();
+
+        this.effects.push(glitchEffect);
+    }
+
+    createNoiseEffect() {
+        if (!this.composer)
+            this.createComposer();
+
+        const noiseEffect = new POSTPROCESSING.NoiseEffect({
+            blendFunction: POSTPROCESSING.BlendFunction.COLOR_DODGE
+        });
+
+        noiseEffect.blendMode.opacity.value = 0.05;
+
+        this.effects.push(noiseEffect);
     }
 }
