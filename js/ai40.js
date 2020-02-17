@@ -14,7 +14,7 @@ canvas.controls.update();
 // canvas.createFloor(600, 600, '#1a1a1a');
 canvas.createAmbientLight();
 
-const sun = canvas.createCircle(100, 36, "#f1f1f1");
+const sun = canvas.createCircle(200, 36, canvas.getMaterial({color: "#f1f1f1"}));
 
 sun.position.set(0, 20, -300);
 sun.scale.setX(1.2);
@@ -37,9 +37,10 @@ loader.load( 'fonts/Montserrat_ExtraBold_Regular.json', function ( font ) {
     const Zero = createLetter(font, '0');
     Zero.position.set(40, -30, 0);
 
-    canvas.setGodraysEffect(sun);
+    canvas.createGodRaysEffect(sun);
+    canvas.saveEffects(sun);
 
-    canvas.render('composer');
+    canvas.render();
 
     console.log(canvas.scene);
 
@@ -61,11 +62,10 @@ function createLetter(font, letter) {
 
     // Create material with msdf shader from three-bmfont-text
     const material = new THREE.MeshPhysicalMaterial( {
-        map: undefined,
+        map: canvas.getGradientTexture("#000", "#1a1a1a"),
         color: 0x000000,
-        metalness: 1,
-        shininess: 30,
-        roughness: 0,
+        metalness: 0,
+        roughness: 1,
         opacity: 1,
         transparent: true,
         envMapIntensity: 5,

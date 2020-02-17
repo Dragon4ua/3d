@@ -58,6 +58,8 @@ class threeDimensions {
                 lightHelper = new THREE.PointLightHelper(light, .2);
             else if (light.type === 'DirectionalLight')
                 lightHelper = new THREE.DirectionalLightHelper(light, 1);
+            else if (light.type === 'SpotLight')
+                lightHelper = new THREE.SpotLightHelper(light);
             else
                 console.log("Light's type wasn't found");
 
@@ -80,18 +82,51 @@ class threeDimensions {
         return new Promise(function(resolve, reject) {
             let loader = new THREE.GLTFLoader();
 
-            loader.load(model, function(gltf) {
-                if (gltf.scene.getObjectByName('Donut'))
-                    this.model = gltf.scene.getObjectByName('Donut');
-
+            loader.load(model, function(gltf, animations) {
                 if (gltf.scene) {
                     this.scene.add(gltf.scene);
-                    resolve();
+                    resolve(gltf);
                 } else {
                     reject();
                 }
             }.bind(this));
         }.bind(this));
+    }
+
+    loadSVG(svg) {
+        return new Promise(function(resolve, reject) {
+            let loader = new THREE.SVGLoader();
+
+            loader.load(svg, function(data) {
+                let paths = data.paths;
+                let group = new THREE.Group();
+
+                for (let path of paths) {
+                    let material = this.getMaterial({
+                        color: path.color,
+                        side: THREE.DoubleSide,
+                        depthWrite: true
+                    });
+
+                    let shapes = path.toShapes(true);
+
+                    for (let shape of shapes) {
+                        let geometry = new THREE.ShapeBufferGeometry(shape);
+                        let mesh = new THREE.Mesh(geometry, material);
+
+                        group.add(mesh);
+                    }
+
+                    this.scene.add(group);
+
+                    resolve(group);
+                }
+            }.bind(this));
+        }.bind(this));
+    }
+
+    loadTexture(texture) {
+        return new THREE.TextureLoader().load(texture);
     }
 
     /**
@@ -165,19 +200,33 @@ class threeDimensions {
         return light;
     }
 
-    createDirectionalLight(direction=false, color="#f7f7f7", intensity=1, x=1, y=1, z=1) {
+    createSpotLight(color="#f7f7f7", x=1, y=1, z=1) {
+        let light = new THREE.SpotLight(color);
+
+        light.position.set(x, y, z);
+        light.castShadow = true;
+        light.shadow.radius = 10;
+
+        this.lights.push(light);
+        this.scene.add(light);
+
+        return light;
+    }
+
+    createDirectionalLight(direction=false, color="#f7f7f7", intensity=1, x=1, y=1, z=1, distance=10) {
         let light = new THREE.DirectionalLight(color, intensity);
 
         light.position.set(x, y, z);
         light.castShadow = true;
         light.shadow.camera.lookAt(0,0,0);
-        light.shadow.camera = new THREE.PerspectiveCamera( 45, 1, 0.1, 10 );
+        light.shadow.camera = new THREE.PerspectiveCamera( 45, 1, 0.1, distance );
 
         if (direction)
            light.target = direction;
 
         this.lights.push(light);
         this.scene.add(light);
+        this.scene.add(light.target);
 
         return light;
     }
@@ -203,10 +252,8 @@ class threeDimensions {
         return mesh;
     }
 
-    createCircle(radius=1, segments=8, color="#808080") {
-        let circle = new THREE.CircleBufferGeometry(radius, segments),
-            material = new THREE.MeshBasicMaterial({color: color}),
-            mesh = new THREE.Mesh(circle, material);
+    createCircle(radius=1, segments=8, material) {
+        let mesh = this.getCircle(radius, segments, material);
 
         mesh.castShadow = true;
 
@@ -256,6 +303,15 @@ class threeDimensions {
             material = this.getMaterial({color: "#f7f7f7"});
 
         let geometry = new THREE.SphereBufferGeometry(radius, segments, segments);
+
+        return new THREE.Mesh(geometry, material);
+    }
+
+    getCircle(radius=1, segments=8, material) {
+        if (!material)
+            material = this.getMaterial({color: "#f7f7f7"});
+
+        let geometry = new THREE.CircleBufferGeometry(radius, segments, segments);
 
         return new THREE.Mesh(geometry, material);
     }
@@ -332,8 +388,6 @@ class threeDimensions {
         }
 
         this.composer.addPass(effectPass);
-
-        console.log(this.composer);
     }
 
     createBloomEffect() {
@@ -370,8 +424,6 @@ class threeDimensions {
             manualDoF: false,
             pentagon: true
         });
-
-        console.log(bokehEffect);
 
         this.effects.push(bokehEffect);
     }

@@ -45,7 +45,7 @@ createBarriers(16, 16, 2);
 
 // effects
 canvas.createGodRaysEffect(sun);
-canvas.createBokehEffect();
+// canvas.createBokehEffect();
 canvas.saveEffects();
 
 // animation
