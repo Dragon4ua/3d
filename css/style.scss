@@ -1,2 +1,93 @@
 body { margin: 0; }
 canvas { display: block; }
+
+* {
+  box-sizing: border-box;
+  font-family: 'Montserrat', sans-serif;
+}
+
+body, html {
+  width: 100%;
+  height: 100%;
+}
+
+.main {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+
+  padding: 64px;
+}
+
+.heading {
+  max-width: 580px;
+  &__title {
+    font-weight: 700;
+    font-size: 90px;
+
+    color: white;
+
+    @supports (-webkit-text-stroke-width: 1px) {
+      color: transparent;
+      -webkit-text-stroke-width: 1px;
+      -webkit-text-stroke-color: white;
+    }
+  }
+}
+
+.header {
+  display: flex;
+  align-items: center;
+
+  &__logo {
+    margin-right: 24px;
+    cursor: pointer;
+  }
+}
+
+.navigation {
+  &__list {
+    display: flex;
+    list-style: none;
+  }
+
+  &__item {
+    margin: 0;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 400;
+
+    opacity: .6;
+    transition: .2s ease-out;
+    cursor: pointer;
+
+    &:hover {
+      opacity: 1;
+    }
+
+    &:not(:first-child) {
+      margin-left: 24px;
+    }
+  }
+}
+
+.button {
+  width: 240px;
+  height: 48px;
+  border-radius: 24px;
+  background-color: transparent;
+  border: 1px solid white;
+  font-size: 16px;
+  color: white;
+  transition: .2s ease-out;
+
+  &:hover {
+    background: #fff;
+    color: black;
+    cursor: pointer;
+  }
+}

@@ -7,7 +7,7 @@ canvas.enableShadow();
 // environment
 canvas.createControls(minDistance = .25, 90);
 canvas.setToneMapping();
-canvas.setBackgroundGradient('#c5e4ee', '#c5e4ee');
+canvas.setBackgroundColor('#000');
 
 // camera
 canvas.camera.position.set(0, 15, 10);
@@ -16,9 +16,36 @@ canvas.controls.target = new THREE.Vector3(0,15,0);
 canvas.camera.updateProjectionMatrix();
 canvas.controls.update();
 
+let vect = new THREE.Vector3();
+let cameraPosition = new THREE.Vector3();
+
+function onMouseMove() {
+    vect.set(
+        ( event.clientX / window.innerWidth ) * 2 - 1,
+        - ( event.clientY / window.innerHeight ) * 2 + 1,
+        0.5 );
+
+    vect.unproject( canvas.camera );
+
+    vect.sub( canvas.camera.position ).normalize();
+
+    let distance = - canvas.camera.position.z / vect.z;
+
+    cameraPosition.copy( canvas.camera.position ).add( vect.multiplyScalar( distance ) );
+
+    cameraPosition.z = canvas.camera.position.z;
+}
+
+window.addEventListener('mousemove', onMouseMove);
+
 // light
-const light1 = canvas.createDirectionalLight(false, color="#fff", 4, 0, 10, 10, 160);
+const light1 = canvas.createDirectionalLight(false, color="#ee9b5f", 3, 0, 10, -20, 160);
 light1.target.position.set(0, 15, 0);
+
+const light2 = canvas.createDirectionalLight(false, color="#C5E4EE", 1, 0, 10, 20, 160);
+light2.target.position.set(0, 20, 0);
+
+canvas.createAmbientLight("#fff", 0);
 
 const pivot = new THREE.Object3D();
 pivot.position.set(0,15,0);
@@ -59,32 +86,22 @@ canvas.loadModel('models/Robot2/scene.gltf').then(function (obj) {
     const robot = root.children[1];
     robot.material.roughness = .8;
     robot.material.metallnes = .2;
+    console.log(robot.material.emissive);
+    console.log(robot.material);
+    robot.material.emissive = new THREE.Color("#fff");
+    robot.material.emissiveIntensity = 1;
     robot.castShadow = true;
 
-    console.log(robot);
-    console.log(robot.material.color);
+    const robotEyes = canvas.createDirectionalLight(false, color="#fff", 0, 0, 10, 10, 160);
+    const robotTarget = new THREE.Object3D();
+    canvas.scene.add(robotTarget);
 
-    const skeletonHelper = new THREE.SkeletonHelper(bones);
-    canvas.scene.add(skeletonHelper);
+    // const skeletonHelper = new THREE.SkeletonHelper(bones);
+    // canvas.scene.add(skeletonHelper);
 
     const headBone = bones.getObjectByName("mixamorigHead_05");
-    console.log(headBone);
-
-    console.log(skeletonHelper);
-
-    const raycaster = new THREE.Raycaster();
-    const mouse = new THREE.Vector2();
-    let intersected = [];
-
-    function onMouseMove( event ) {
-
-        // calculate mouse position in normalized device coordinates
-        // (-1 to +1) for both components
-
-        mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
-        mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
-
-    }
+    headBone.parent.add(robotEyes);
+    robotEyes.position.set(headBone.position.x, headBone.position.y, headBone.position.z);
 
     // effects
     // canvas.createGodRaysEffect(sun);
@@ -94,33 +111,17 @@ canvas.loadModel('models/Robot2/scene.gltf').then(function (obj) {
     canvas.animation = function () {
         pivot.rotation.y = pivot.rotation.y + .01;
 
-        // update the picking ray with the camera and mouse position
-        raycaster.setFromCamera( mouse, canvas.camera );
+        robotTarget.position.set(cameraPosition.x, cameraPosition.y, cameraPosition.z);
 
-        // calculate objects intersecting the picking ray
-        let intersects = raycaster.intersectObjects( root.children );
+        if (robotTarget.position.x)
+            robotEyes.target = robotTarget;
+        else
+            robotEyes.target = canvas.camera;
 
-        console.log(intersects);
-        console.log(intersects.length);
-
-        if (intersects.length > 0) {
-            for (let i = 0; i < intersects.length; i++) {
-                if (intersected.includes(intersects[i].object))
-                    return;
-
-                if (intersected.length && (!intersected.includes(intersects[i].object))) {
-                    intersects[i].object.material.color.set(0xffffff);
-                    intersected = false;
-                    return;
-                }
-
-                intersects[i].object.material.color.set(0xff0000);
-                intersected.push(intersects[i].object);
-            }
-        }
+        headBone.rotation.x = robotEyes.shadow.camera.rotation.x + Math.PI;
+        headBone.rotation.y = -robotEyes.shadow.camera.rotation.y;
+        headBone.rotation.z = -robotEyes.shadow.camera.rotation.z + Math.PI;
     };
-
-    window.addEventListener( 'mousemove', onMouseMove, false );
 
     // debug & render
     // canvas.enableDebugMode();
